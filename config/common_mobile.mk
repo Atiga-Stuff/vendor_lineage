@@ -73,5 +73,5 @@ PRODUCT_PACKAGES += \
 # Themes
 PRODUCT_PACKAGES += \
     LineageBlackTheme \
-    LineageThemesStub \
-    ThemePicker
+    ThemePicker \
+    ThemesStub
