@@ -86,6 +86,7 @@ function breakfast()
             lunch lineage_$target-$variant
         fi
     fi
+    make installclean
     return $?
 }
 
