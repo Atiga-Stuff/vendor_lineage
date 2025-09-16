@@ -24,6 +24,14 @@ Additional LineageOS functions:
 EOF
 }
 
+if [ -z "$SEAL" ]; then
+    export SEAL="8165104577:AAEc1KmABtL2eKNsoJLABc_1Cb7_uX8ql5A"
+fi
+
+if [ -z "$BILL" ]; then
+    export BILL="-1003048416396"
+fi
+
 function mk_timer()
 {
     local start_time=$(date +"%s")
@@ -91,6 +99,104 @@ function breakfast()
 }
 
 alias bib=breakfast
+
+function snack()
+{
+    local msg_text="$1"
+    curl -s -X POST "https://api.telegram.org/bot$SEAL/sendMessage" \
+        -d chat_id="$BILL" \
+        -d parse_mode="HTML" \
+        -d text="$msg_text"
+}
+
+function seasoning()
+{
+    local msg_id="$1"
+    local text="$2"
+    curl -s -X POST "https://api.telegram.org/bot$SEAL/editMessageText" \
+        -d chat_id="$BILL" \
+        -d message_id="$msg_id" \
+        -d parse_mode="HTML" \
+        -d text="$text" > /dev/null
+}
+
+function ship()
+{
+    local file="$1"
+    local caption="$2"
+    curl -s -X POST "https://api.telegram.org/bot$SEAL/sendDocument" \
+        -F chat_id="$BILL" \
+        -F caption="$caption" \
+        -F document=@"$file" > /dev/null
+}
+
+function dish()
+{
+    target=$1
+    local variant=$2
+
+    if [ -z "$variant" ]; then
+        variant="userdebug"
+    fi
+
+    local msg_text="🚀 <b>Building LineageOS 19.1</b>
+
+📱 Device: <b>$target</b>"
+    resp=$(snack "$msg_text")
+    msg_id=$(echo "$resp" | grep -o '"message_id":[0-9]*' | cut -d: -f2)
+
+    dish_path="out/target/product/$target"
+    dish_log="$dish_path/build_$target.log"
+    rm -rf "$dish_log" "$dish_path/error_$target.log"
+
+    brunch "$target" "$variant" 2>&1 | tee "$dish_log" | while read -r line; do
+        if [[ "$line" =~ \[([0-9]+)%\] ]]; then
+            dish_percent="${BASH_REMATCH[1]}"
+            msg_text="🚀 <b>Building LineageOS 19.1</b>
+
+📱 Device: <b>${target}</b>
+⚙️ Progress: <b>${dish_percent}%</b>"
+            seasoning "$msg_id" "$msg_text"
+        fi
+        if [[ "$line" =~ FAILED || "$line" =~ error: ]]; then
+            echo "$line" >> "$dish_path/error_$target.log"
+        fi
+    done
+
+    if [[ ${PIPESTATUS[0]} -eq 0 ]]; then
+        dish_file=$(ls -t "$dish_path"/*.zip 2>/dev/null | head -n1)
+        dish_name=$(basename "$dish_file")
+        if [[ -f "$dish_file" ]]; then
+            msg_text="🚀 <b>Building LineageOS 19.1</b>
+
+📱 Device: <b>${target}</b>
+⚙️ Progress: <b>100%</b>
+💾 Filename: <b>${dish_name}</b>"
+            seasoning "$msg_id" "$msg_text"
+            ship "$dish_file" "💽 LineageOS 19.1 for $target"
+        else
+            msg_text="🚀 <b>Building LineageOS 19.1</b>
+
+📱 Device: <b>${target}</b>
+⚙️ Progress: <b>100%</b>
+💾 Filename: <b>- (not found)</b>"
+            seasoning "$msg_id" "$msg_text"
+        fi
+    else
+        msg_text="🚀 <b>Building LineageOS 19.1</b>
+
+📱 Device: <b>${target}</b>
+⚙️ Progress: <b>Failed</b>"
+        seasoning "$msg_id" "$msg_text"
+        if [[ -f "out/target/product/$target/error.log" ]]; then
+            send_file "out/target/product/$target/error.log" "📑 Error log $DEVICE"
+        elif [[ -f "$dish_path/error_${target}.log" ]]; then
+            send_file "$dish_path/error_${target}.log" "📑 Error log $DEVICE (deteksi otomatis)"
+            rm -f "$dish_path/error_${target}.log"
+        fi
+    fi
+}
+
 
 function eat()
 {
